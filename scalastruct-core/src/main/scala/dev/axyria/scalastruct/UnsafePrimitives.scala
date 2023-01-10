@@ -6,9 +6,6 @@ import cats.syntax.all.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-private inline def addrIndex(address: Pointer, index: Long, alignment: Int): Pointer =
-  Pointer(address.toLong + index * alignment)
-
 given unsafeByteKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStructKind[F, Byte] with
   override def alloc(value: Byte): F[Pointer] = allocEmpty(alignment)
     .flatTap(addr => store(addr, 0, value))
@@ -32,7 +29,7 @@ given unsafeIntKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStructK
 
   override def store(address: Pointer, index: Long, data: Int): F[Pointer] =
     Sync[F]
-      .delay(addrIndex(address, index, alignment))
+      .delay(Pointer.buildAddress(address, index, alignment))
       .flatTap(addr => f.realloc[Int](addr, data))
 
   override def alignment: Int = Integer.BYTES
@@ -41,9 +38,6 @@ given unsafeIntKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStructK
     f.visit[Int](addr)
 
 given unsafeCharKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStructKind[F, Char] with
-  inline def arrayOf(value: Char): Array[Byte] =
-    Array((value >>> 8).toByte, value.toByte)
-
   override def alloc(data: Char): F[Pointer] = allocEmpty(alignment)
     .flatTap(addr => store(addr, 0, data))
 
@@ -51,10 +45,74 @@ given unsafeCharKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStruct
 
   override def store(address: Pointer, index: Long, data: Char): F[Pointer] =
     Sync[F]
-      .delay(addrIndex(address, index, alignment))
+      .delay(Pointer.buildAddress(address, index, alignment))
       .flatTap(addr => f.realloc[Char](addr, data))
 
   override def alignment: Int = Character.BYTES
 
   override def read(addr: Pointer): F[Char] =
     f.visit[Char](addr)
+
+given unsafeLongKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStructKind[F, Long] with
+  override def alloc(data: Long): F[Pointer] = allocEmpty(alignment)
+    .flatTap(addr => store(addr, 0, data))
+
+  override def allocEmpty(length: Long): F[Pointer] = f.alloc(length * alignment)
+
+  override def store(address: Pointer, index: Long, data: Long): F[Pointer] =
+    Sync[F]
+      .delay(Pointer.buildAddress(address, index, alignment))
+      .flatTap(addr => f.realloc[Long](addr, data))
+
+  override def alignment: Int = java.lang.Long.BYTES
+
+  override def read(addr: Pointer): F[Long] =
+    f.visit[Long](addr)
+
+given unsafeDoubleKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStructKind[F, Double] with
+  override def alloc(data: Double): F[Pointer] = allocEmpty(alignment)
+    .flatTap(addr => store(addr, 0, data))
+
+  override def allocEmpty(length: Long): F[Pointer] = f.alloc(length * alignment)
+
+  override def store(address: Pointer, index: Long, data: Double): F[Pointer] =
+    Sync[F]
+      .delay(Pointer.buildAddress(address, index, alignment))
+      .flatTap(addr => f.realloc[Double](addr, data))
+
+  override def alignment: Int = java.lang.Double.BYTES
+
+  override def read(addr: Pointer): F[Double] =
+    f.visit[Double](addr)
+
+given unsafeFloatKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStructKind[F, Float] with
+  override def alloc(data: Float): F[Pointer] = allocEmpty(alignment)
+    .flatTap(addr => store(addr, 0, data))
+
+  override def allocEmpty(length: Long): F[Pointer] = f.alloc(length * alignment)
+
+  override def store(address: Pointer, index: Long, data: Float): F[Pointer] =
+    Sync[F]
+      .delay(Pointer.buildAddress(address, index, alignment))
+      .flatTap(addr => f.realloc[Float](addr, data))
+
+  override def alignment: Int = java.lang.Float.BYTES
+
+  override def read(addr: Pointer): F[Float] =
+    f.visit[Float](addr)
+
+given unsafeShortKind[F[_]: Sync](using f: UnsafePointerFactory[F]): UnsafeStructKind[F, Short] with
+  override def alloc(data: Short): F[Pointer] = allocEmpty(alignment)
+    .flatTap(addr => store(addr, 0, data))
+
+  override def allocEmpty(length: Long): F[Pointer] = f.alloc(length * alignment)
+
+  override def store(address: Pointer, index: Long, data: Short): F[Pointer] =
+    Sync[F]
+      .delay(Pointer.buildAddress(address, index, alignment))
+      .flatTap(addr => f.realloc[Short](addr, data))
+
+  override def alignment: Int = java.lang.Short.BYTES
+
+  override def read(addr: Pointer): F[Short] =
+    f.visit[Short](addr)

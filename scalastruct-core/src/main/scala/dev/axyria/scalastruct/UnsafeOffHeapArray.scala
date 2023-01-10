@@ -10,7 +10,7 @@ import dev.axyria.scalastruct.UnsafeOffHeapArray.offset
   * @author
   *   Pedro H.
   * @param length
-  *   The length of this array.
+  *   The length/capacity of this array.
   * @tparam F
   *   The monoid where the computations will be performed.
   * @tparam A
@@ -18,7 +18,7 @@ import dev.axyria.scalastruct.UnsafeOffHeapArray.offset
   * @author
   *   Pedro H.
   */
-case class UnsafeOffHeapArray[F[_]: Sync, A](address: Pointer, length: Long)(using
+case class UnsafeOffHeapArray[F[_]: Sync, A](address: Pointer, capacity: Long)(using
     kind: UnsafeStructKind[F, A]
 ) {
 
@@ -42,7 +42,7 @@ case class UnsafeOffHeapArray[F[_]: Sync, A](address: Pointer, length: Long)(usi
     *   A computation of memory value retrieving then converting it to [A].
     */
   def get(index: Long): F[A] =
-    kind.read(address + index * offset[F, A])
+    kind.read(Pointer.buildAddress(address, index, offset[F, A]))
 
   /** Frees/invalidates this array.
     *

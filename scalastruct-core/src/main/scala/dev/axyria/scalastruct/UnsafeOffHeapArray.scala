@@ -1,7 +1,5 @@
 package dev.axyria.scalastruct
 
-import cats.effect.Sync
-import cats.syntax.all.*
 import dev.axyria.scalastruct.UnsafeOffHeapArray.offset
 
 /** A simple implementation of a fixed-length off-heap - using native memory not managed by the garbage
@@ -11,16 +9,12 @@ import dev.axyria.scalastruct.UnsafeOffHeapArray.offset
   *   Pedro H.
   * @param length
   *   The length/capacity of this array.
-  * @tparam F
-  *   The monoid where the computations will be performed.
   * @tparam A
   *   The type of the elements of the array.
   * @author
   *   Pedro H.
   */
-case class UnsafeOffHeapArray[F[_]: Sync, A](address: Pointer, capacity: Long)(using
-    kind: UnsafeStructKind[F, A]
-) {
+case class UnsafeOffHeapArray[A](address: Pointer, capacity: Long)(using kind: UnsafeStructKind[A]) {
 
   /** Modifies the memory stack to add an element to this array.
     *
@@ -31,7 +25,9 @@ case class UnsafeOffHeapArray[F[_]: Sync, A](address: Pointer, capacity: Long)(u
     * @return
     *   A computation of a memory reallocating.
     */
-  def set(index: Long, value: A): F[Pointer] =
+  inline def set(index: Long, value: A): Pointer =
+    if index < 0 || index >= capacity then
+      throw IndexOutOfBoundsException(s"Index $index is out of bounds for array of size $capacity.")
     kind.store(address, index, value)
 
   /** Retrieves a value from this off-heap array directly from the memory stack.
@@ -41,41 +37,48 @@ case class UnsafeOffHeapArray[F[_]: Sync, A](address: Pointer, capacity: Long)(u
     * @return
     *   A computation of memory value retrieving then converting it to [A].
     */
-  def get(index: Long): F[A] =
-    kind.read(Pointer.buildAddress(address, index, offset[F, A]))
+  inline def get(index: Long): A =
+    if index < 0 || index >= capacity then
+      throw IndexOutOfBoundsException(s"Index $index is out of bounds for array of size $capacity.")
+    kind.read(Pointer.buildAddress(address, index, offset[A]))
 
   /** Frees/invalidates this array.
     *
     * @return
     *   A computation of a memory deallocation process.
     */
-  def free(): F[Unit] =
+  inline def free(): Unit =
     address.free()
+
+  /** Reallocates this array to a new capacity and returns an updated array.
+    *
+    * @param newCapacity
+    *   The new capacity of this array.
+    * @return
+    *   A new array with the same [[address]] but reallocated with a new [[capacity]].
+    */
+  inline def withCapacity(newCapacity: Long): UnsafeOffHeapArray[A] =
+    kind.realloc(address, newCapacity)
+    UnsafeOffHeapArray(address, newCapacity)
 }
 
 object UnsafeOffHeapArray {
 
   /** Initializes this array by allocating the size of all elements expected to be in this array.
     *
-    * @param length
-    *   The length of this array.
+    * @param capacity
+    *   The capacity of this array.
     * @return
     *   A computation of a full array memory allocation followed by a new helper class for managing unsafe off
     *   heap arrays with ease.
     */
-  def apply[F[_]: Sync, A](length: Long)(using kind: UnsafeStructKind[F, A]): F[UnsafeOffHeapArray[F, A]] =
-    Sync[F]
-      .delay(length)
-      .flatMap(l => if l <= 0 then invalidLengthErr[F, Pointer] else kind.allocEmpty(l))
-      .map(addr => UnsafeOffHeapArray(addr, length))
-
-  private inline def invalidLengthErr[F[_]: Sync, A]: F[A] =
-    Sync[F].raiseError(
-      new IllegalArgumentException("The length of the unsafe off-heap array must be greater than 0.")
-    )
+  def apply[A](capacity: Long)(using kind: UnsafeStructKind[A]): UnsafeOffHeapArray[A] =
+    if capacity <= 0 then
+      throw IllegalArgumentException("The capacity of the unsafe off-heap array must be greater than 0.")
+    UnsafeOffHeapArray(kind.allocEmpty(capacity), capacity)
 
   /** The offset between the start of each element. This expects all elements to be primitives or simply have
     * a fixed size (non-dynamic) size between all elements.
     */
-  inline def offset[F[_], A](using kind: UnsafeStructKind[F, A]): Int = kind.alignment
+  inline def offset[A](using kind: UnsafeStructKind[A]): Int = kind.alignment
 }

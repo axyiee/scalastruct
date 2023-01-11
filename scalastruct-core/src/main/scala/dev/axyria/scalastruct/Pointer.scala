@@ -1,8 +1,5 @@
 package dev.axyria.scalastruct
 
-import cats.effect.*
-import java.lang.reflect.Modifier
-
 /** A reference to a native memory address pointer using opaque types to have the less overhead possible. This
   * is a wrapper around common pointer operations and is intended to be used in conjunction with [[RawType]].
   *
@@ -45,8 +42,8 @@ object Pointer:
 
   extension (pointer: Type)
     // general-purpose methods
-    def toLong: Long          = pointer
-    def +(offset: Long): Type = pointer + offset
-    def -(offset: Long): Type = pointer - offset
-    def *(offset: Long): Type = pointer * offset
-    def /(offset: Long): Type = pointer / offset
+    inline def toLong: Long                    = pointer
+    inline def +(offset: Long | Pointer): Type = pointer + offset
+    inline def -(offset: Long | Pointer): Type = pointer - offset
+    inline def *(offset: Long | Pointer): Type = pointer * offset
+    inline def /(offset: Long | Pointer): Type = pointer / offset

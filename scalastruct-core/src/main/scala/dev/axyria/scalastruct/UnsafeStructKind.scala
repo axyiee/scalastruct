@@ -4,14 +4,12 @@ package dev.axyria.scalastruct
   * also useful to use [[sun.misc.Unsafe]] as a behind-the-scenes implementation whenever possible to ensure
   * maximum performance and efficiency when working with native memory.
   *
-  * @tparam F
-  *   The monoid where the computations will be performed.
   * @tparam A
   *   The kind of structure to be dynamically managed.
   * @author
   *   Pedro H.
   */
-trait UnsafeStructKind[F[_], A]:
+trait UnsafeStructKind[A]:
   /** The memory alignment for this type. An alignment is the number of bytes a value that a memory pointer
     * points to must be divisible by in order to be valid for this type.
     */
@@ -23,9 +21,9 @@ trait UnsafeStructKind[F[_], A]:
     *   The data to allocate to the heap.
     *
     * @return
-    *   A computation of a memory allocation process.
+    *   The address of the allocated data.
     */
-  def alloc(data: A): F[Pointer]
+  def alloc(data: A): Pointer
 
   /** Allocates an empty structure within the given [length] directly into the memory table.
     *
@@ -33,12 +31,12 @@ trait UnsafeStructKind[F[_], A]:
     *   The length of the structure to be allocated.
     *
     * @return
-    *   A computation of a memory allocating process + the start of the result memory block.
+    *   The start address of the result memory block.
     */
-  def allocEmpty(length: Long): F[Pointer]
+  def allocEmpty(length: Long): Pointer
 
   /** Reallocates a value of type [A] at the given [address]. This will modify the value at the address given
-    * by the formula `address + index * alignment`.
+    * by the formula of `address + index * alignment`.
     *
     * @param address
     *   The address to reallocate at.
@@ -47,13 +45,23 @@ trait UnsafeStructKind[F[_], A]:
     * @param data
     *   The new data to be allocated.
     * @return
-    *   A computation of a memory reallocating process then returns its address.
+    *   The address of the reallocated data.
     */
-  def store(address: Pointer, index: Long, data: A): F[Pointer]
+  def store(address: Pointer, index: Long, data: A): Pointer
+
+  /** Reallocates and change the [[length]] of a structure at the given [[address]]. The structure will have a
+    * length given by the formula of `length * alignment`.
+    *
+    * @param address
+    *   The address to reallocate at.
+    * @param length
+    *   The new length of the reallocated structure.
+    */
+  def realloc(address: Pointer, length: Long): Unit
 
   /** Deserialize the given [[address]] data back into data of type [A].
     */
-  def read(address: Pointer): F[A]
+  def read(address: Pointer): A
 
   /** Return whether the given pointer is valid for this type.
     *
@@ -68,4 +76,4 @@ trait UnsafeStructKind[F[_], A]:
   extension (pointer: Pointer)
     /** Deserialize this [[Pointer]] data back into data of type [A].
       */
-    def readAs: F[A] = this.read(pointer)
+    def readAs: A = this.read(pointer)

@@ -31,12 +31,12 @@ lazy val deps = new {
 lazy val core = crossProject(JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("scalastruct-core"))
-  .settings(name := "scalastruct-core", semanticdbEnabled := true, deps.typelevel, deps.test)
+  .settings(name := "scalastruct-core", semanticdbEnabled := true, /*deps.typelevel,*/ deps.test)
 
 lazy val benchmarks = project
   .in(file("benchmarks"))
   .dependsOn(core.jvm)
-  .settings(name := "scalastruct-benchmarks", deps.typelevel)
+  .settings(name := "scalastruct-benchmarks" /*, deps.typelevel*/ )
   .enablePlugins(JmhPlugin)
 
 lazy val root = tlCrossRootProject.aggregate(core)
